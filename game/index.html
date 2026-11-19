@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SOLMARA — Streets of the Sun: a wholly original 2D open-world crime game. Drive, steal cars, dodge the SMPD, run six story jobs for Mara Solis, and build rep across seven sun-soaked districts.">
+<meta name="author" content="Ryan Mahrez">
+<meta name="theme-color" content="#0f2a3a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f2a3a'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%23ffe14d'/%3E%3Cpath d='M4 24c4-3 8-3 12 0s8 3 12 0' stroke='%231fa8c9' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+<title>SOLMARA — Streets of the Sun</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0f2a3a; font-family: 'Segoe UI', Arial, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); display: none; }
+  .panel { background: rgba(10, 20, 30, .55); border-radius: 8px; padding: 8px 12px; }
+  #hud-top-right { position: absolute; top: 12px; right: 14px; text-align: right; }
+  #hud-money { font-size: 26px; font-weight: 800; color: #7dff9e; }
+  #hud-stars { font-size: 24px; letter-spacing: 2px; color: #ffe14d; }
+  #hud-stars.wanted { animation: blink 0.7s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  #hud-clock, #hud-district, #hud-radio, #hud-phase { font-size: 14px; opacity: .95; }
+  #hud-bottom-left { position: absolute; left: 14px; bottom: 14px; }
+  #minimap { border: 2px solid rgba(255,255,255,.75); border-radius: 50%; display: block; background: #0f2a3a; }
+  .bar-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; font-weight: 700; }
+  .bar { width: 170px; height: 10px; background: rgba(0,0,0,.55); border-radius: 5px; overflow: hidden; }
+  .bar > div { height: 100%; }
+  #hud-health-bar { background: #ff5b5b; width: 100%; }
+  #hud-armor-bar { background: #4d96ff; width: 0%; }
+  #hud-stamina-bar { background: #2ecc71; width: 100%; }
+  #hud-weapon-line { margin-top: 6px; font-size: 14px; }
+  #hud-objective-box { position: absolute; top: 12px; left: 14px; max-width: 420px; }
+  #hud-mission { font-size: 15px; font-weight: 800; color: #ffe14d; }
+  #hud-objective, #hud-taxi, #hud-race, #hud-packages { font-size: 14px; margin-top: 2px; }
+  #hud-speed { position: absolute; right: 16px; bottom: 16px; font-size: 26px; font-weight: 800; }
+  #hud-banner-box { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); text-align: center; display: none; }
+  #hud-banner { font-size: 40px; font-weight: 900; color: #ffe14d; letter-spacing: 1px; }
+  #hud-banner-sub { font-size: 17px; margin-top: 4px; }
+  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(8, 18, 28, .72); color: #fff; text-align: center; z-index: 5; }
+  .screen h1 { font-size: 64px; margin: 0; letter-spacing: 4px; color: #ffe14d; text-shadow: 0 0 24px rgba(255,46,136,.65); }
+  .screen h2 { font-size: 20px; font-weight: 400; margin: 6px 0 26px; color: #bfe8ff; }
+  .screen button { pointer-events: auto; display: block; margin: 8px auto; padding: 12px 34px; font-size: 17px; font-weight: 700; color: #0f2a3a; background: #ffe14d; border: none; border-radius: 8px; cursor: pointer; min-width: 260px; }
+  .screen button:hover { background: #fff; }
+  .screen button.ghost { background: transparent; color: #fff; border: 2px solid #fff; }
+  .screen button:disabled { opacity: .45; cursor: default; }
+  #help { display: none; max-width: 560px; text-align: left; font-size: 14px; line-height: 1.7; background: rgba(0,0,0,.45); padding: 14px 20px; border-radius: 10px; margin-bottom: 10px; }
+  #shop-list { width: 420px; }
+  .shop-row { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,.45); padding: 10px 14px; margin: 6px 0; border-radius: 8px; font-size: 15px; }
+  .shop-row button { min-width: 90px; margin: 0; padding: 8px 14px; font-size: 15px; }
+  .tiny { font-size: 13px; opacity: .8; margin-top: 18px; }
+  #over-stats { font-size: 15px; color: #bfe8ff; margin: 4px 0 14px; }
+  /* Small screens: shrink the chrome so the game stays readable on a phone. */
+  @media (max-width: 640px) {
+    .screen h1 { font-size: 42px; }
+    .screen h2 { font-size: 16px; }
+    #hud-banner { font-size: 26px; }
+    #hud-banner-sub { font-size: 14px; }
+    #hud-money { font-size: 20px; }
+    #hud-stars { font-size: 18px; }
+    #hud-objective-box { max-width: 250px; }
+    .bar { width: 120px; }
+    #minimap { width: 120px; height: 120px; }
+    #shop-list { width: 92vw; }
+    .screen button { min-width: 220px; padding: 10px 20px; font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Solmara: an open-world crime game. Drive, steal cars, dodge the police, run jobs for Mara Solis."></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+<noscript><p style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;background:#0f2a3a;font-size:18px;text-align:center;padding:20px">SOLMARA needs JavaScript to run — please enable it and reload.</p></noscript>
+
+<div id="hud">
+  <div id="hud-top-right" class="panel">
+    <div id="hud-money">$150</div>
+    <div id="hud-stars">☆☆☆☆☆</div>
+    <div id="hud-clock">09:00</div>
+    <div id="hud-phase">day</div>
+    <div id="hud-district">Old Town</div>
+    <div id="hud-radio">SOL FM — Sunset synthwave</div>
+    <div id="hud-rep">REP 0</div>
+  </div>
+  <div id="hud-objective-box" class="panel">
+    <div id="hud-mission"></div>
+    <div id="hud-objective"></div>
+    <div id="hud-taxi"></div>
+    <div id="hud-race"></div>
+    <div id="hud-packages"></div>
+  </div>
+  <div id="hud-bottom-left">
+    <canvas id="minimap" width="190" height="190"></canvas>
+    <div class="bar-row">HP <span id="hud-health">100</span><div class="bar"><div id="hud-health-bar"></div></div></div>
+    <div class="bar-row">ARMOR <span id="hud-armor">0</span><div class="bar"><div id="hud-armor-bar"></div></div></div>
+    <div class="bar-row">STA <span id="hud-stamina">100</span><div class="bar"><div id="hud-stamina-bar"></div></div></div>
+    <div id="hud-weapon-line"><span id="hud-weapon">Fists</span> · <span id="hud-ammo">—</span></div>
+  </div>
+  <div id="hud-speed"></div>
+  <div id="hud-banner-box"><div id="hud-banner"></div><div id="hud-banner-sub"></div></div>
+</div>
+
+<div id="title-screen" class="screen">
+  <h1>SOLMARA</h1>
+  <h2>Streets of the Sun — an open-world crime game</h2>
+  <button id="btn-new">New Game</button>
+  <button id="btn-continue" class="ghost">Continue</button>
+  <button id="btn-help" class="ghost">How to play</button>
+  <div id="help">
+    <b>WASD / arrows</b> — walk &amp; drive &nbsp;·&nbsp; <b>Shift</b> — run (drains stamina; rest to recover)<br>
+    <b>E</b> — enter / steal a car, exit a car &nbsp;·&nbsp; <b>Mouse</b> — aim, click to shoot<br>
+    <b>F</b> — punch (three in a row lands a heavy combo hit) &nbsp;·&nbsp; <b>R</b> — reload &nbsp;·&nbsp; <b>C</b> — switch weapon<br>
+    <b>Space</b> — handbrake &nbsp;·&nbsp; <b>T</b> — next job from Mara Solis &nbsp;·&nbsp; <b>Q</b> — radio station &nbsp;·&nbsp; <b>M</b> — mute<br>
+    <b>Esc</b> — pause &nbsp;·&nbsp; Drive a taxi to pick up fares (chained fares pay more). Race rivals for cash and best times.<br>
+    Find 12 hidden packages. Wanted stars bring the SMPD — at 3 stars they set roadblocks. Hide to cool off, or outrun them.<br>
+    <b>Tips:</b> hold Shift to sprint — the green STA bar empties fast and locks running until it recovers.<br>
+    Three quick punches land a heavy combo hit. Health slowly returns when no one is shooting at you.<br>
+    At night, headlights and neon light the streets — and the minimap shows guards in red, packages in pink.
+  </div>
+  <details id="changelog" style="max-width:560px;text-align:left;font-size:13px;line-height:1.6;background:rgba(0,0,0,.45);padding:10px 16px;border-radius:10px;margin-bottom:10px">
+    <summary style="cursor:pointer;font-weight:700">What's new in v1.1.0</summary>
+    Stamina and sprinting, punch combos, a fourth radio station, street races with a rival, taxi fare chains, police roadblocks at 3 stars, day and night with headlights, pickup respawns, car-bomb chain damage, and a shop that gates its best hardware behind rep.
+  </details>
+  <div class="tiny">A wholly original game. Its city, characters, vehicles, names, story, art, sound and music are its own.</div>
+  <div class="tiny" id="version-stamp">SOLMARA v1.1.0 — offline, no account, no network</div>
+</div>
+
+<div id="pause-screen" class="screen">
+  <h1 style="font-size:44px">PAUSED</h1>
+  <h2>Solmara waits for no one. Except now.</h2>
+  <button id="btn-resume">Resume</button>
+  <button id="btn-save">Save game</button>
+  <button id="btn-quit" class="ghost">Quit to title</button>
+</div>
+
+<div id="over-screen" class="screen">
+  <h1 id="over-title" style="font-size:56px">FLATLINED</h1>
+  <h2 id="over-sub"></h2>
+  <div id="over-stats"></div>
+  <button id="btn-respawn">Back on the streets</button>
+</div>
+
+<div id="shop-screen" class="screen">
+  <h1 id="shop-title" style="font-size:40px">SOLMARA ARMS</h1>
+  <h2>Cash: <span id="shop-money">$0</span> — Esc to leave</h2>
+  <div id="shop-list"></div>
+  <button id="btn-shop-close" class="ghost">Leave</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
